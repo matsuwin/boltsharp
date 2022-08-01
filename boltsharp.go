@@ -3,7 +3,7 @@ package boltsharp
 import (
 	"bytes"
 	"fmt"
-	"github.com/matsuwin/stringx"
+	"github.com/matsuwin/syscat/cat"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"math"
@@ -39,14 +39,14 @@ func fetchRules(rules ...interface{}) (node *QueryRulesNode, match []string) {
 	switch vType {
 	case "string":
 		ss := make([]string, 0, len(rules))
-		for i := range rules {
+		for i := 0; i < len(rules); i++ {
 			if rules[i] == nil {
 				continue
 			}
 			ss = append(ss, rules[i].(string))
 		}
 		return nil, ss
-	case "*bolt.QueryRulesNode":
+	case "*boltsharp.QueryRulesNode":
 		return rules[0].(*QueryRulesNode), nil
 	default:
 		panic(errors.New("Unsupported types '" + vType + "'"))
@@ -68,7 +68,7 @@ func Select(db *bbolt.DB, first, last int64, sort, limit int, rules ...interface
 
 	// 查询初始化
 	var regs = make([]*regexp.Regexp, 0, len(match))
-	for i := range match {
+	for i := 0; i < len(match); i++ {
 		regs = append(regs, regexp.MustCompile(match[i]))
 	}
 	if limit <= 0 {
@@ -78,8 +78,8 @@ func Select(db *bbolt.DB, first, last int64, sort, limit int, rules ...interface
 	data := make([]*Element, 0, 100)
 
 	// 装载模块
-	matching := func(k, v []byte) int {
-		for i := range regs {
+	matching := func(k, v []byte) int8 {
+		for i := 0; i < len(regs); i++ {
 			if !regs[i].Match(k) {
 				return 1
 			}
@@ -93,7 +93,7 @@ func Select(db *bbolt.DB, first, last int64, sort, limit int, rules ...interface
 				return 1
 			}
 		}
-		data = append(data, &Element{stringx.BytesToString(k), v})
+		data = append(data, &Element{cat.BytesToString(k), v})
 		return 0
 	}
 
@@ -112,7 +112,7 @@ func Select(db *bbolt.DB, first, last int64, sort, limit int, rules ...interface
 		} else if sort == -1 {
 			k, v := cur.Last()
 			if len(k) > 13 {
-				if t := k[:13]; stringx.BytesToString(k) < stringx.BytesToString(finish) {
+				if t := k[:13]; cat.BytesToString(k) < cat.BytesToString(finish) {
 					finish = t
 				}
 			}
@@ -145,14 +145,14 @@ func SetAll(db *bbolt.DB, elements []*Element) error {
 	}
 	update := func(tx *bbolt.Tx) (err error) {
 		b := tx.Bucket(bucket)
-		for i := range elements {
+		for i := 0; i < len(elements); i++ {
 			if elements[i] == nil {
 				continue
 			}
 			if elements[i].Value != nil {
-				err = b.Put(stringx.StringToBytes(&elements[i].Index), elements[i].Value)
+				err = b.Put(cat.StringToBytes(&elements[i].Index), elements[i].Value)
 			} else {
-				err = b.Delete(stringx.StringToBytes(&elements[i].Index))
+				err = b.Delete(cat.StringToBytes(&elements[i].Index))
 			}
 			if err != nil {
 				return
@@ -176,7 +176,7 @@ func CleanExpiredData(db *bbolt.DB, d time.Duration) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	for i := range elems {
+	for i := 0; i < len(elems); i++ {
 		if elems[i] == nil {
 			continue
 		}
@@ -235,7 +235,7 @@ func Get(db *bbolt.DB, index string) (value []byte, _ error) {
 		return nil, err
 	}
 	view := func(tx *bbolt.Tx) error {
-		value = tx.Bucket(bucket).Get(stringx.StringToBytes(&index))
+		value = tx.Bucket(bucket).Get(cat.StringToBytes(&index))
 		return nil
 	}
 	if err := db.View(view); err != nil {
@@ -252,7 +252,7 @@ func GetKeyAll(db *bbolt.DB) ([]string, error) {
 	view := func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bucket)
 		return b.ForEach(func(k, v []byte) error {
-			keys = append(keys, stringx.BytesToString(k))
+			keys = append(keys, cat.BytesToString(k))
 			return nil
 		})
 	}
@@ -268,8 +268,8 @@ func DeleteAll(db *bbolt.DB, keys []string) error {
 	}
 	update := func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bucket)
-		for _, v := range keys {
-			err := b.Delete(stringx.StringToBytes(&v))
+		for i := 0; i < len(keys); i++ {
+			err := b.Delete(cat.StringToBytes(&keys[i]))
 			if err != nil {
 				return err
 			}
@@ -285,5 +285,5 @@ func DeleteAll(db *bbolt.DB, keys []string) error {
 func tfl2bytes(first, last int64) (_, _ []byte) {
 	First := fmt.Sprintf("%d", first)
 	Last := fmt.Sprintf("%d", last)
-	return stringx.StringToBytes(&First), stringx.StringToBytes(&Last)
+	return cat.StringToBytes(&First), cat.StringToBytes(&Last)
 }

@@ -2,7 +2,7 @@ package boltsharp
 
 import (
 	"fmt"
-	"github.com/matsuwin/stringx"
+	"github.com/matsuwin/syscat/cat"
 	"regexp"
 	"strings"
 )
@@ -29,14 +29,14 @@ func matchingStateMachine(debug bool, index []byte, rules *QueryRulesNode) (stat
 	// 条件分支
 	switch rules.Condition {
 	case QueryConditionAND:
-		for i := range rules.Rules {
+		for i := 0; i < len(rules.Rules); i++ {
 			state = matchingStateMachine(debug, index, rules.Rules[i])
 			if !state {
 				return false
 			}
 		}
 	case QueryConditionOR:
-		for i := range rules.Rules {
+		for i := 0; i < len(rules.Rules); i++ {
 			state = matchingStateMachine(debug, index, rules.Rules[i])
 			if state {
 				return true
@@ -65,7 +65,7 @@ func stateOperator(index []byte, rules *QueryRulesNode) (state bool) {
 		}
 	case QueryOperatorContains:
 		seed := strings.Join([]string{";'" + rules.Field + "'"}, "")
-		value := stringx.BytesToString(regexp.MustCompile(seed + ".+;'").Find(index))
+		value := cat.BytesToString(regexp.MustCompile(seed + ".+;'").Find(index))
 		if len(value) > len(seed) {
 			state = strings.Contains(value[len(seed):], fmt.Sprintf("%s", rules.Value))
 		}
@@ -75,7 +75,7 @@ func stateOperator(index []byte, rules *QueryRulesNode) (state bool) {
 
 func NewQueryIndexes(unixMilli string, fields []string) string {
 	var indexes, key string
-	for i := range fields {
+	for i := 0; i < len(fields); i++ {
 		if key == "" {
 			key = fields[i]
 		} else {
